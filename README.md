@@ -1,4 +1,4 @@
-# flask-jwtlib
+# flask_jwtlib
 
 v0.0.1
 
