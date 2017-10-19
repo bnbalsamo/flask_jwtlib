@@ -20,9 +20,9 @@ setup(
     include_package_data=True,
     url='https://github.com/bnbalsamo/flask_jwtlib',
     install_requires=[
+        'cryptography',
         'flask',
-        'pyJWT',
-        'requests'
+        'pyJWT'
     ],
     tests_require=[
         'pytest'
