@@ -76,18 +76,15 @@ def pubkey():
 # =====
 
 
-def check_token(token, pubkey=None):
+def check_token(token):
     """
     Check the token
-    Assumes it's in the format the whogoesthere server returns
     """
     global JWT_ALGO
-    if pubkey is None:
-        pubkey = pubkey()
     try:
         token = jwt.decode(
             token,
-            pubkey,
+            pubkey(),
             algorithm=JWT_ALGO
         )
         return True
