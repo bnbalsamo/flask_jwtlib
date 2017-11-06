@@ -76,10 +76,7 @@ def pubkey():
 # =====
 
 
-def check_token(token):
-    """
-    Check the token
-    """
+def _DEFAULT_CHECK_TOKEN(token):
     global JWT_ALGO
     try:
         token = jwt.decode(
@@ -90,6 +87,14 @@ def check_token(token):
         return True
     except jwt.InvalidTokenError:
         return False
+
+
+def check_token(token):
+    """
+    Check the token. This function will be called from within
+    the decorators to determine if a token is valid or not.
+    """
+    return _DEFAULT_CHECK_TOKEN(token)
 
 
 def _get_token_from_header():
