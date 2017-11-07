@@ -8,7 +8,7 @@ __version__ = "0.0.1"
 
 import datetime
 from functools import wraps
-from flask import request, g
+from flask import request, g, abort
 import jwt
 
 
@@ -16,18 +16,73 @@ import jwt
 JWT_ALGO = "RS256"
 
 
+# Defaults
+def _DEFAULT_CHECK_TOKEN(token):
+    global JWT_ALGO
+    try:
+        token = jwt.decode(
+            token,
+            pubkey(),
+            algorithm=JWT_ALGO
+        )
+        return True
+    except jwt.InvalidTokenError:
+        return False
+
+
+def _DEFAULT_GET_TOKEN():
+    """
+    Get the token from the response
+    Expects the response to supply the token in one of the
+    three ways specified in RFC 6750
+    """
+    # https://tools.ietf.org/html/rfc6750#section-2
+    tokens = []
+
+    for x in [_get_token_from_header,
+              _get_token_from_form,
+              _get_token_from_query]:
+        token = x()
+        if token:
+            tokens.append(token)
+
+    # Be a bit forgiving, don't break if they passed the
+    # same token twice, even if they aren't supposed to.
+    tokens = set(tokens)
+
+    if len(tokens) > 1:
+        raise ValueError("Too many tokens!")
+    elif len(tokens) == 1:
+        return tokens.pop()
+    else:
+        return None
+
+
+def _DEFAULT_REQUIRES_AUTHENTICATION_FAILURE_CALLBACK():
+    return abort(401)
+
+
+def _DEFAULT_OPTIONAL_AUTHENTICATION_FAILURE_CALLBACK():
+    pass
+
+
 # =====
 # pubkey cache
 # =====
+
 # We store the key itself and the last time
 # it was retrieved at, so we can keep it fresh
 # if we're pulling from the server
 PUBKEY_TUPLE = None
+
+# How long to hold onto a pubkey
+# we got from calling retrieve_pubkey()
+PUBKEY_CACHE_TIMEOUT = 300
+
+
 # If we explicitly set the pubkey never check it from the server
 # We stop checks by setting the time we retrieved it in the distant
 # future, so it never ends up too long ago.
-
-
 def set_permanent_pubkey(pubkey):
     """
     Sets a permanent pubkey
@@ -49,20 +104,12 @@ def retrieve_pubkey():
     pass
 
 
-# How long to hold onto a pubkey
-# we got from calling retrieve_pubkey()
-PUBKEY_CACHE_TIMEOUT = 300
-
-
 def pubkey():
     """
     Returns the public key used for verifying JWTs
 
     This function includes the machinery for managing the pubkey cache,
     if one wasn't specified via an env var.
-
-    Note this will **never** refresh the key if one was supplied via
-    an env var.
     """
     global PUBKEY_TUPLE
     cache_timeout = datetime.timedelta(seconds=PUBKEY_CACHE_TIMEOUT)
@@ -71,24 +118,10 @@ def pubkey():
         PUBKEY_TUPLE = (retrieve_pubkey(), datetime.datetime.now())
     return PUBKEY_TUPLE[0]
 
+
 # =====
 # Functions for working with tokens
 # =====
-
-
-def _DEFAULT_CHECK_TOKEN(token):
-    global JWT_ALGO
-    try:
-        token = jwt.decode(
-            token,
-            pubkey(),
-            algorithm=JWT_ALGO
-        )
-        return True
-    except jwt.InvalidTokenError:
-        return False
-
-
 def check_token(token):
     """
     Check the token. This function will be called from within
@@ -131,34 +164,6 @@ def _get_token_from_query():
         return None
 
 
-def _DEFAULT_GET_TOKEN():
-    """
-    Get the token from the response
-    Expects the response to supply the token in one of the
-    three ways specified in RFC 6750
-    """
-    # https://tools.ietf.org/html/rfc6750#section-2
-    tokens = []
-
-    for x in [_get_token_from_header,
-              _get_token_from_form,
-              _get_token_from_query]:
-        token = x()
-        if token:
-            tokens.append(token)
-
-    # Be a bit forgiving, don't break if they passed the
-    # same token twice, even if they aren't supposed to.
-    tokens = set(tokens)
-
-    if len(tokens) > 1:
-        raise ValueError("Too many tokens!")
-    elif len(tokens) == 1:
-        return tokens.pop()
-    else:
-        return None
-
-
 def get_token():
     """
     A callback that should return the encoded token
@@ -197,8 +202,25 @@ def is_authenticated():
 
 
 # =====
-# Decorators
+# Decorators / Callbacks used in decorators
 # =====
+def requires_authentication_failure_callback():
+    """
+    A callback for when the client doesn't provide a (valid )?token.
+    This callback **should** have a return value.
+    """
+    return _DEFAULT_REQUIRES_AUTHENTICATION_FAILURE_CALLBACK()
+
+
+def optional_authentication_failure_callback():
+    """
+    A callback for when the client doesn't provide a token.
+    This callback **should not** have a return value.
+
+    Dumping any (now invalid) tokens out of caches should
+    probably be done here.
+    """
+    _DEFAULT_OPTIONAL_AUTHENTICATION_FAILURE_CALLBACK()
 
 
 def requires_authentication(f):
@@ -209,17 +231,6 @@ def requires_authentication(f):
     flask_jwtlib.requires_authentication.no_auth_callback() will be
     returned.
     """
-
-    def no_auth_callback():
-        """
-        A callback for when the client doesn't provide a token.
-        This callback **should** have a return value.
-        """
-        raise NotImplementedError(
-            'You must specify a callback with a return value ' +
-            'at flask_jwtlib.requires_authentication.no_auth_callback()'
-        )
-
     @wraps(f)
     def decorated(*args, **kwargs):
         # Defaults
@@ -231,13 +242,13 @@ def requires_authentication(f):
             token = get_token()
         except ValueError:
             # Something is wrong with the token formatting
-            return no_auth_callback()
+            return requires_authentication_failure_callback()
         if not token:
             # Token isn't in the request or the session
-            return no_auth_callback()
+            return requires_authentication_failure_callback()
         if not check_token(token):
             # The token isn't valid
-            return no_auth_callback()
+            return requires_authentication_failure_callback()
         g.authenticated = True
         g.raw_token = get_token()
         g.json_token = get_json_token()
@@ -253,17 +264,6 @@ def optional_authentication(f):
     flask_jwtlib.optional_authentication.no_auth_callback() will be
     called, but the decorated endpoint will still be returned.
     """
-
-    def no_auth_callback():
-        """
-        A callback for when the client doesn't provide a token.
-        This callback **should not** have a return value.
-
-        Dumping any (now invalid) tokens out of caches should
-        probably be done here.
-        """
-        pass
-
     @wraps(f)
     def decorated(*args, **kwargs):
         # Defaults
@@ -276,16 +276,16 @@ def optional_authentication(f):
         except ValueError:
             # Something is wrong with the token formatting
             # formatting
-            no_auth_callback()
+            optional_authentication_failure_callback()
             return f(*args, **kwargs)
         if not token:
             # Token isn't in the request or the session
-            no_auth_callback()
+            optional_authentication_failure_callback()
             return f(*args, **kwargs)
         json_token = check_token(token)
         if not json_token:
             # The token isn't valid
-            no_auth_callback()
+            optional_authentication_failure_callback()
             return f(*args, **kwargs)
         g.authenticated = True
         g.raw_token = get_token()
