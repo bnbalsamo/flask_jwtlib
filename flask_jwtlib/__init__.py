@@ -22,7 +22,7 @@ def _DEFAULT_CHECK_TOKEN(token):
     try:
         token = jwt.decode(
             token,
-            pubkey(),
+            signing_key(),
             algorithm=JWT_ALGO
         )
         return True
@@ -67,34 +67,34 @@ def _DEFAULT_OPTIONAL_AUTHENTICATION_FAILURE_CALLBACK():
 
 
 # =====
-# pubkey cache
+# signing key cache
 # =====
 
 # We store the key itself and the last time
 # it was retrieved at, so we can keep it fresh
 # if we're pulling from the server
-PUBKEY_TUPLE = None
+_SIGNING_KEY_TUPLE = None
 
 # How long to hold onto a pubkey
 # we got from calling retrieve_pubkey()
-PUBKEY_CACHE_TIMEOUT = 300
+SIGNING_KEY_CACHE_TIMEOUT = 300
 
 
 # If we explicitly set the pubkey never check it from the server
 # We stop checks by setting the time we retrieved it in the distant
 # future, so it never ends up too long ago.
-def set_permanent_pubkey(pubkey):
+def set_permanent_signing_key(signing_key):
     """
     Sets a permanent pubkey
 
     If this function is called retrieve_pubkey() never
     will be by pubkey()
     """
-    global PUBKEY_TUPLE
-    PUBKEY_TUPLE = (pubkey, datetime.datetime.max)
+    global _SIGNING_KEY_TUPLE
+    _SIGNING_KEY_TUPLE = (signing_key, datetime.datetime.max)
 
 
-def retrieve_pubkey():
+def retrieve_signing_key():
     """
     A callback to refresh the pubkey
 
@@ -104,19 +104,18 @@ def retrieve_pubkey():
     pass
 
 
-def pubkey():
+def signing_key():
     """
-    Returns the public key used for verifying JWTs
+    Returns the signing key used for verifying JWTs
 
-    This function includes the machinery for managing the pubkey cache,
-    if one wasn't specified via an env var.
+    This function includes the machinery for managing the signing key cache
     """
-    global PUBKEY_TUPLE
-    cache_timeout = datetime.timedelta(seconds=PUBKEY_CACHE_TIMEOUT)
-    if not PUBKEY_TUPLE or \
-            (datetime.datetime.now() - PUBKEY_TUPLE[1]) > cache_timeout:
-        PUBKEY_TUPLE = (retrieve_pubkey(), datetime.datetime.now())
-    return PUBKEY_TUPLE[0]
+    global _SIGNING_KEY_TUPLE
+    cache_timeout = datetime.timedelta(seconds=SIGNING_KEY_CACHE_TIMEOUT)
+    if not _SIGNING_KEY_TUPLE or \
+            (datetime.datetime.now() - _SIGNING_KEY_TUPLE[1]) > cache_timeout:
+        _SIGNING_KEY_TUPLE = (retrieve_signing_key(), datetime.datetime.now())
+    return _SIGNING_KEY_TUPLE[0]
 
 
 # =====
@@ -187,7 +186,7 @@ def get_json_token(verify=True):
     token = get_token()
     json_token = jwt.decode(
         token,
-        pubkey(),
+        signing_key(),
         algorithm=JWT_ALGO,
         verify=verify
     )
