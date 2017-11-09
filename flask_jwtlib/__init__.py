@@ -22,7 +22,7 @@ def _DEFAULT_CHECK_TOKEN(token):
     try:
         token = jwt.decode(
             token,
-            signing_key(),
+            verification_key(),
             algorithm=JWT_ALGO
         )
         return True
@@ -67,34 +67,34 @@ def _DEFAULT_OPTIONAL_AUTHENTICATION_FAILURE_CALLBACK():
 
 
 # =====
-# signing key cache
+# verification key cache
 # =====
 
 # We store the key itself and the last time
 # it was retrieved at, so we can keep it fresh
 # if we're pulling from the server
-_SIGNING_KEY_TUPLE = None
+_VERIFICATION_KEY_TUPLE = None
 
 # How long to hold onto a pubkey
 # we got from calling retrieve_pubkey()
-SIGNING_KEY_CACHE_TIMEOUT = 300
+VERIFICATION_KEY_CACHE_TIMEOUT = 300
 
 
 # If we explicitly set the pubkey never check it from the server
 # We stop checks by setting the time we retrieved it in the distant
 # future, so it never ends up too long ago.
-def set_permanent_signing_key(signing_key):
+def set_permanent_verification_key(verification_key):
     """
     Sets a permanent pubkey
 
     If this function is called retrieve_pubkey() never
     will be by pubkey()
     """
-    global _SIGNING_KEY_TUPLE
-    _SIGNING_KEY_TUPLE = (signing_key, datetime.datetime.max)
+    global _VERIFICATION_KEY_TUPLE
+    _VERIFICATION_KEY_TUPLE = (verification_key, datetime.datetime.max)
 
 
-def retrieve_signing_key():
+def retrieve_verification_key():
     """
     A callback to refresh the pubkey
 
@@ -104,18 +104,18 @@ def retrieve_signing_key():
     pass
 
 
-def signing_key():
+def verification_key():
     """
-    Returns the signing key used for verifying JWTs
+    Returns the verification key used for verifying JWTs
 
-    This function includes the machinery for managing the signing key cache
+    This function includes the machinery for managing the verification key cache
     """
-    global _SIGNING_KEY_TUPLE
-    cache_timeout = datetime.timedelta(seconds=SIGNING_KEY_CACHE_TIMEOUT)
-    if not _SIGNING_KEY_TUPLE or \
-            (datetime.datetime.now() - _SIGNING_KEY_TUPLE[1]) > cache_timeout:
-        _SIGNING_KEY_TUPLE = (retrieve_signing_key(), datetime.datetime.now())
-    return _SIGNING_KEY_TUPLE[0]
+    global _VERIFICATION_KEY_TUPLE
+    cache_timeout = datetime.timedelta(seconds=VERIFICATION_KEY_CACHE_TIMEOUT)
+    if not _VERIFICATION_KEY_TUPLE or \
+            (datetime.datetime.now() - _VERIFICATION_KEY_TUPLE[1]) > cache_timeout:
+        _VERIFICATION_KEY_TUPLE = (retrieve_verification_key(), datetime.datetime.now())
+    return _VERIFICATION_KEY_TUPLE[0]
 
 
 # =====
@@ -186,7 +186,7 @@ def get_json_token(verify=True):
     token = get_token()
     json_token = jwt.decode(
         token,
-        signing_key(),
+        verification_key(),
         algorithm=JWT_ALGO,
         verify=verify
     )
