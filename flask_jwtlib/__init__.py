@@ -75,20 +75,20 @@ def _DEFAULT_OPTIONAL_AUTHENTICATION_FAILURE_CALLBACK():
 # if we're pulling from the server
 _VERIFICATION_KEY_TUPLE = None
 
-# How long to hold onto a pubkey
-# we got from calling retrieve_pubkey()
+# How long to hold onto a verification key
+# we got from calling retrieve_verification_key()
 VERIFICATION_KEY_CACHE_TIMEOUT = 300
 
 
-# If we explicitly set the pubkey never check it from the server
+# If we explicitly set the verificatin key never check it from the server
 # We stop checks by setting the time we retrieved it in the distant
 # future, so it never ends up too long ago.
 def set_permanent_verification_key(verification_key):
     """
-    Sets a permanent pubkey
+    Sets a permanent verification key
 
-    If this function is called retrieve_pubkey() never
-    will be by pubkey()
+    If this function is called retrieve_verification_key() never
+    will be by verification_key()
     """
     global _VERIFICATION_KEY_TUPLE
     _VERIFICATION_KEY_TUPLE = (verification_key, datetime.datetime.max)
@@ -96,9 +96,9 @@ def set_permanent_verification_key(verification_key):
 
 def retrieve_verification_key():
     """
-    A callback to refresh the pubkey
+    A callback to refresh the verification key
 
-    Useful if the pubkey is on a remote source and may be changed
+    Useful if the verification key is on a remote source and may be changed
     periodically.
     """
     pass
