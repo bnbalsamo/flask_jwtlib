@@ -9,7 +9,7 @@ def readme():
 setup(
     name="flask_jwtlib",
     description="A minimal library for working with jwts in Flask apps",
-    version="0.0.1",
+    version="0.0.2",
     long_description=readme(),
     author="Brian Balsamo",
     author_email="brian@brianbalsamo.com",

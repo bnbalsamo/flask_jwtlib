@@ -1,6 +1,6 @@
 # flask_jwtlib
 
-v0.0.1
+v0.0.2
 
 [![Build Status](https://travis-ci.org/bnbalsamo/flask_jwtlib.svg?branch=master)](https://travis-ci.org/bnbalsamo/flask_jwtlib) [![Coverage Status](https://coveralls.io/repos/github/bnbalsamo/flask_jwtlib/badge.svg?branch=master)](https://coveralls.io/github/bnbalsamo/flask_jwtlib?branch=master) [![Documentation Status](https://readthedocs.org/projects/flask-jwtlib/badge/?version=latest)](http://flask-jwtlib.readthedocs.io/en/latest/?badge=latest)
 
