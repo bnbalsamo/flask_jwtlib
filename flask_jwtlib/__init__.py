@@ -48,7 +48,7 @@ def _DEFAULT_GET_TOKEN():
     from a request, exposed as :func:`get_token`.
 
     Expects the request to supply the token in one of the
-    three ways specified in :rfc:6750:
+    three ways specified in :rfc:`6750`:
         * via the header
         * via a form argument
         * via the query string
