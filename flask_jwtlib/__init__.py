@@ -4,7 +4,7 @@ flask_jwtlib
 
 __author__ = "Brian Balsamo"
 __email__ = "brian@brianbalsamo.com"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 import datetime
 from functools import wraps
@@ -310,7 +310,7 @@ def requires_authentication(f):
 
     In the event a user is not authenticated the return value of
     :func:`requires_authentication_failure_callback` will be
-    returned.
+    returned **instead** of the return value of the route.
 
     In any decorated endpoint, sets the following attributes on :attr:`flask.g` on success:
         * authenticated (bool): Whether or not the user is authenticated
