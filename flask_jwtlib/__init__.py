@@ -4,7 +4,7 @@ flask_jwtlib
 
 __author__ = "Brian Balsamo"
 __email__ = "brian@brianbalsamo.com"
-__version__ = "0.0.3"
+__version__ = "0.1.0"
 
 import datetime
 from functools import wraps
@@ -197,9 +197,10 @@ def _get_token_from_header():
     """
     try:
         auth_header = request.headers['Authorization']
-        if not auth_header.startswith("Bearer: "):
+        header_prefix = "Bearer "
+        if not auth_header.startswith(header_prefix):
             raise ValueError("Malformed auth header")
-        return auth_header[8:]
+        return auth_header[len(header_prefix):]
     except KeyError:
         # Auth isn't in the header
         return None
